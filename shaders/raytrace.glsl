@@ -4,6 +4,10 @@ layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, rgba8) uniform writeonly image2D img;
 layout(set = 0, binding = 1) uniform readonly Input {
+    int width;
+    int height;
+    vec3 view_position;
+    float view_angle;
     float time;
 };
 
@@ -76,8 +80,22 @@ Intersect intersect(Ray ray, Plane p) {
     return miss;
 }
 
-Ray createPrimeRay(const in vec2 uv) {
-    Ray ray = Ray(vec3(0),normalize(vec3(uv.x*1.5,uv.y*1.5, -1.0)));
+// Create the ray that will be used to draw the current pixel
+Ray createPrimeRay() {
+    const float FOV = 90.0;
+    vec3 camera_position = view_position;
+    vec3 camera_direction = vec3(sin(view_angle*0.01745),0.,-cos(view_angle*0.01745));
+    vec3 camera_up = vec3(0.,1.,0.);
+    vec3 camera_right = -cross(camera_up, camera_direction);
+    float view_plane_half_width = tan(FOV*0.008727);
+    float view_plane_half_height = view_plane_half_width * (height/width);
+    vec3 view_plane_top_left = camera_direction + camera_up*view_plane_half_height 
+        - camera_right*view_plane_half_width;
+    vec3 x_inc = (camera_right*2.0*view_plane_half_width)/width;
+    vec3 y_inc = (camera_up*2.0*view_plane_half_height)/height;
+    
+    vec3 ray_direction = normalize((view_plane_top_left + gl_GlobalInvocationID.x*x_inc - gl_GlobalInvocationID.y*y_inc));
+    Ray ray = Ray(camera_position, ray_direction);
     return ray;
 }
 
@@ -198,7 +216,7 @@ void main() {
     vec2 uv = (coords - vec2(512, 512)) / 1024;
 
     // Create and trace the ray
-    Ray ray = createPrimeRay(uv);
+    Ray ray = createPrimeRay();
     vec3 col = radience(ray);
 
     // Output image

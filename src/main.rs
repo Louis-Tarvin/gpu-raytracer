@@ -17,7 +17,7 @@ use vulkano::{
 use vulkano_win::VkSurfaceBuild;
 use winit::{
     dpi::{PhysicalSize, Size},
-    event::Event,
+    event::{DeviceEvent, ElementState, Event, KeyboardInput, VirtualKeyCode},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
@@ -145,6 +145,13 @@ fn main() {
     //let image = ImageBuffer::<Rgba<u8>, _>::from_raw(1024, 1024, &buffer_content[..]).unwrap();
     //image.save("image.png").unwrap();
 
+    let mut view_position = [0., 0., 0.];
+    let mut view_angle = 0.0;
+    let mut moving_forward = false;
+    let mut moving_backward = false;
+    let mut turning_left = false;
+    let mut turning_right = false;
+
     loop {
         // Handle window events
         events_loop.run(move |event, _, control_flow| match event {
@@ -154,7 +161,90 @@ fn main() {
             } => {
                 *control_flow = ControlFlow::Exit;
             }
+            Event::DeviceEvent {
+                event: DeviceEvent::Key(k),
+                ..
+            } => match k {
+                // Check if up arrow is being pressed
+                KeyboardInput {
+                    virtual_keycode: Some(VirtualKeyCode::Up),
+                    state: ElementState::Pressed,
+                    ..
+                } => {
+                    moving_forward = true;
+                }
+                KeyboardInput {
+                    virtual_keycode: Some(VirtualKeyCode::Up),
+                    state: ElementState::Released,
+                    ..
+                } => {
+                    moving_forward = false;
+                }
+                // Check if down arrow is being pressed
+                KeyboardInput {
+                    virtual_keycode: Some(VirtualKeyCode::Down),
+                    state: ElementState::Pressed,
+                    ..
+                } => {
+                    moving_backward = true;
+                }
+                KeyboardInput {
+                    virtual_keycode: Some(VirtualKeyCode::Down),
+                    state: ElementState::Released,
+                    ..
+                } => {
+                    moving_backward = false;
+                }
+                // Check if left arrow is being pressed
+                KeyboardInput {
+                    virtual_keycode: Some(VirtualKeyCode::Left),
+                    state: ElementState::Pressed,
+                    ..
+                } => {
+                    turning_left = true;
+                }
+                KeyboardInput {
+                    virtual_keycode: Some(VirtualKeyCode::Left),
+                    state: ElementState::Released,
+                    ..
+                } => {
+                    turning_left = false;
+                }
+                // Check if right arrow is being pressed
+                KeyboardInput {
+                    virtual_keycode: Some(VirtualKeyCode::Right),
+                    state: ElementState::Pressed,
+                    ..
+                } => {
+                    turning_right = true;
+                }
+                KeyboardInput {
+                    virtual_keycode: Some(VirtualKeyCode::Right),
+                    state: ElementState::Released,
+                    ..
+                } => {
+                    turning_right = false;
+                }
+                _ => {}
+            },
             Event::MainEventsCleared => {
+                // Handle movement
+                if moving_forward {
+                    view_position[0] += 0.01 * (view_angle * 0.01745_f32).sin();
+                    view_position[2] -= 0.01 * (view_angle * 0.01745_f32).cos();
+                }
+                if moving_backward {
+                    view_position[0] -= 0.01 * (view_angle * 0.01745_f32).sin();
+                    view_position[2] += 0.01 * (view_angle * 0.01745_f32).cos();
+                }
+                // Handle turning
+                if turning_left {
+                    view_angle -= 1.;
+                }
+                if turning_right {
+                    view_angle += 1.;
+                }
+
                 let (image_num, _suboptimal, acquire_future) =
                     vulkano::swapchain::acquire_next_image(swapchain.clone(), None).unwrap();
 
@@ -163,7 +253,12 @@ fn main() {
                     BufferUsage::all(),
                     false,
                     cs::ty::Input {
+                        width: 1024,
+                        height: 1024,
+                        view_position,
+                        view_angle,
                         time: now.elapsed().as_secs_f32(),
+                        _dummy0: [0, 0, 0, 0, 0, 0, 0, 0],
                     },
                 )
                 .expect("failed to create params buffer");
