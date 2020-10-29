@@ -42,12 +42,13 @@ fn main() {
     );
 
     let events_loop = EventLoop::new();
+    // Creating the window
+
+    let width = 800;
+    let height = 800;
     let surface = WindowBuilder::new()
         .with_resizable(false)
-        .with_inner_size(Size::Physical(PhysicalSize {
-            width: 1024,
-            height: 1024,
-        }))
+        .with_inner_size(Size::Physical(PhysicalSize { width, height }))
         .build_vk_surface(&events_loop, instance.clone())
         .unwrap();
 
@@ -75,7 +76,7 @@ fn main() {
     let caps = surface
         .capabilities(physical)
         .expect("failed to get surface capabilities");
-    let dimensions = caps.current_extent.unwrap_or([1024, 1024]);
+    let dimensions = caps.current_extent.unwrap_or([width, height]);
     let alpha = caps.supported_composite_alpha.iter().next().unwrap();
     let format = caps.supported_formats[0].0;
 
@@ -112,10 +113,7 @@ fn main() {
 
     let image = StorageImage::new(
         device.clone(),
-        Dimensions::Dim2d {
-            width: 1024,
-            height: 1024,
-        },
+        Dimensions::Dim2d { width, height },
         Format::R8G8B8A8Unorm,
         Some(queue.family()),
     )
@@ -131,7 +129,7 @@ fn main() {
     //device.clone(),
     //BufferUsage::all(),
     //false,
-    //(0..1024 * 1024 * 4).map(|_| 0u8),
+    //(0..width * height * 4).map(|_| 0u8),
     //)
     //.expect("failed to create buffer");
 
@@ -142,7 +140,7 @@ fn main() {
     //.wait(None)
     //.unwrap();
     //let buffer_content = buf.read().unwrap();
-    //let image = ImageBuffer::<Rgba<u8>, _>::from_raw(1024, 1024, &buffer_content[..]).unwrap();
+    //let image = ImageBuffer::<Rgba<u8>, _>::from_raw(width, height, &buffer_content[..]).unwrap();
     //image.save("image.png").unwrap();
 
     let mut view_position = [0., 0., 0.];
@@ -253,8 +251,8 @@ fn main() {
                     BufferUsage::all(),
                     false,
                     cs::ty::Input {
-                        width: 1024,
-                        height: 1024,
+                        width: width as i32,
+                        height: height as i32,
                         view_position,
                         view_angle,
                         time: now.elapsed().as_secs_f32(),
@@ -277,7 +275,7 @@ fn main() {
                     AutoCommandBufferBuilder::new(device.clone(), queue.family()).unwrap();
                 builder
                     .dispatch(
-                        [1024 / 8, 1024 / 8, 1],
+                        [width / 8, height / 8, 1],
                         compute_pipeline.clone(),
                         set.clone(),
                         (),
@@ -286,7 +284,7 @@ fn main() {
                     .blit_image(
                         image.clone(),
                         [0, 0, 0],
-                        [1024, 1024, 1],
+                        [width as i32, height as i32, 1],
                         0,
                         0,
                         images[image_num].clone(),

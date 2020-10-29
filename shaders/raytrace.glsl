@@ -210,11 +210,6 @@ vec3 radience(Ray ray) {
 }
 
 void main() {
-    // Normalized pixel coordinates (from 0 to 1)
-    vec2 coords = gl_GlobalInvocationID.xy;
-    coords.y = 1024 - coords.y;
-    vec2 uv = (coords - vec2(512, 512)) / 1024;
-
     // Create and trace the ray
     Ray ray = createPrimeRay();
     vec3 col = radience(ray);
