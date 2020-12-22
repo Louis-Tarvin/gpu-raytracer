@@ -88,7 +88,8 @@ Ray createPrimeRay() {
     vec3 camera_up = vec3(0.,1.,0.);
     vec3 camera_right = -cross(camera_up, camera_direction);
     float view_plane_half_width = tan(FOV*0.008727);
-    float view_plane_half_height = view_plane_half_width * (height/width);
+    float ar = float(height)/float(width);
+    float view_plane_half_height = view_plane_half_width * ar;
     vec3 view_plane_top_left = camera_direction + camera_up*view_plane_half_height 
         - camera_right*view_plane_half_width;
     vec3 x_inc = (camera_right*2.0*view_plane_half_width)/width;

@@ -1,0 +1,32 @@
+name: raytracer
+args:
+    - frame:
+        short: f
+        long: frame
+        takes_value: true
+        value_name: "output-filename"
+        help: Export as a PNG rather than opening a new window
+    - width:
+        short: w
+        long: width
+        takes_value: true
+        help: Specify the width in pixels. Default is 500
+    - height:
+        short: h
+        long: height
+        takes_value: true
+        help: Specify the height in pixels. Default is 500
+    - device:
+        short: d
+        long: device
+        takes_value: true
+        help: Specify the index of the physical device for Vulkan to use.
+    - list-devices:
+        short: l
+        long: list-devices
+        help: List the physical devices available to Vulkan and their corresponding index
+        conflicts_with:
+            - frame
+            - width
+            - height
+            - device

@@ -12,3 +12,4 @@ vulkano-shaders = "0.19"
 image = "0.23"
 vulkano-win = "0.19"
 winit = "0.22"
+clap = {version = "2.33.3", features = ["yaml"]}
