@@ -193,7 +193,7 @@ fn main() {
         let mut builder = AutoCommandBufferBuilder::new(device.clone(), queue.family()).unwrap();
         builder
             .dispatch(
-                [1024 / 8, 1024 / 8, 1],
+                [width / 8, height / 8, 1],
                 compute_pipeline.clone(),
                 set.clone(),
                 (),

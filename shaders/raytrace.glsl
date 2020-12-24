@@ -48,6 +48,16 @@ struct Intersect {
 // An intersect with a distance of 0. Used to represent a miss
 const Intersect miss = Intersect(0.0, vec3(0), Surface(vec3(0),0.0));
 
+// Defining arrays that contain scene geometry
+const int num_lights = 2;
+Light lights [num_lights];
+
+const int num_spheres = 3;
+Sphere spheres [num_spheres];
+
+const int num_planes = 1;
+Plane planes [num_planes];
+
 // Ray-Sphere intersection
 Intersect intersect(const in Ray ray, const in Sphere s) {
     float t = dot(ray.direction, s.pos - ray.origin);
@@ -80,6 +90,26 @@ Intersect intersect(Ray ray, Plane p) {
     return miss;
 }
 
+// Ray-Light intersection
+float intersect(const in Ray ray, const in Light l) {
+    float t = dot(ray.direction, l.pos - ray.origin);
+    vec3 p = ray.origin + ray.direction * t;
+    float y = length(l.pos - p);
+    float size = l.brightness / 100.0;
+    if (size >= y) { 
+        float x = sqrt(size * size - y * y);
+        float t1 = t - x;
+        float t2 = t + x;
+        float tc = min(t1, t2);
+        if (tc < 0.0) {
+            return 0.0;
+        }
+        return max(-smoothstep(size * 0.8,size,y)+1, 0.0);
+    } else {
+        return 0.0;
+    }
+}
+
 // Create the ray that will be used to draw the current pixel
 Ray createPrimeRay() {
     const float FOV = 90.0;
@@ -102,17 +132,6 @@ Ray createPrimeRay() {
 
 // Trace a ray. Returns the intersect with the shortest distance
 Intersect trace(const in Ray ray) {
-    const int num_spheres = 3;
-    Sphere spheres [num_spheres];
-
-    spheres[0] = Sphere(vec3(0.0,0.0,-4.0),1.0,Surface(vec3(1.0),0.7));
-    spheres[1] = Sphere(vec3(0.5*cos(time),0.5*sin(time*3.14159)+0.1,-3.0),0.2,Surface(vec3(1.0,0.0,0.0), 0.0));
-    spheres[2] = Sphere(vec3(2.0,-0.5,-4.0),0.5,Surface(vec3(0.2,0.7,0.0),0.0));
-
-    const int num_planes = 1;
-    Plane planes [num_planes];
-    planes[0] = Plane(vec3(0.0,-1.0,0.0),vec3(0.0,-1.0,0.0),Surface(vec3(0.0,0.0,1.0),0.5));
-
     Intersect closest = miss;
 
     for (int i = 0; i < num_spheres; i++) {
@@ -131,8 +150,22 @@ Intersect trace(const in Ray ray) {
             closest = intersect;
         }
     }
-
     return closest;
+}
+
+// Checks if the ray passes through any lights. If so it returns the brightness
+// to increase the color by
+float traceLights(const in Ray ray, Intersect closest) {
+    float brightness = 0.0;
+    for (int i = 0; i < num_lights; i++) {
+        float dist = distance(ray.origin, lights[i].pos);
+        if (lights[i].direction == vec3(0.0)) {
+            if (closest.dist == 0.0 || dist < closest.dist) {
+                brightness += intersect(ray, lights[i]);
+            }
+        }
+    }
+    return brightness;
 }
 
 // Get the color to be drawn on screen.
@@ -141,10 +174,6 @@ vec3 radience(Ray ray) {
     const float EPSILON = 1e-3;
     const float GAMMA = 2.2;
 
-    const int num_lights = 2;
-    Light lights [num_lights];
-    lights[0] = Light(vec3(-1.0, 0.8*sin(time), -2.0), 20.0, vec3(0.0));
-    lights[1] = Light(vec3(0.0), 0.5, vec3(0.0,-1.0,0.0));
 
     const int recursive_depth = 4;
 
@@ -155,6 +184,7 @@ vec3 radience(Ray ray) {
     for (int i = 0; i < recursive_depth; i++) {
         vec3 shaded_color = vec3(0.0);
         intersect = trace(ray);
+        float brightness = traceLights(ray, intersect);
 
         if (intersect != miss) {
             vec3 hit_point = ray.origin + ray.direction * intersect.dist;
@@ -189,6 +219,7 @@ vec3 radience(Ray ray) {
                 }
             }
 
+            color += brightness * vec3(1.0);
             float reflectivity = intersect.surface.reflectivity;
             if (reflectivity != 0.0) {
                 vec3 reflection = reflect(ray.direction, intersect.norm);
@@ -201,6 +232,7 @@ vec3 radience(Ray ray) {
             color += shaded_color * prev_reflectivity;
             prev_reflectivity = reflectivity;
         } else {
+            color += brightness * vec3(1.0);
             break;
         }
 
@@ -211,6 +243,15 @@ vec3 radience(Ray ray) {
 }
 
 void main() {
+    // Initialising the scene
+    lights[0] = Light(vec3(-1.0, 0.8*sin(time), -2.0), 20.0, vec3(0.0));
+    lights[1] = Light(vec3(0.2*cos(time)+1.0, 0.8*sin(time)+1.0, -3.0), 10.0, vec3(0.0));
+    //lights[1] = Light(vec3(0.0), 0.5, vec3(0.0,-1.0,0.0));
+    spheres[0] = Sphere(vec3(0.0,0.0,-4.0),1.0,Surface(vec3(1.0),0.7));
+    spheres[1] = Sphere(vec3(0.5*cos(time),0.5*sin(time*3.14159)+0.1,-2.0),0.2,Surface(vec3(1.0,0.0,0.0), 0.0));
+    spheres[2] = Sphere(vec3(2.0,-0.5,-4.0),0.5,Surface(vec3(0.2,0.7,0.0),0.0));
+    planes[0] = Plane(vec3(0.0,-1.0,0.0),vec3(0.0,-1.0,0.0),Surface(vec3(1.0),0.5));
+
     // Create and trace the ray
     Ray ray = createPrimeRay();
     vec3 col = radience(ray);
