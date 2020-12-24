@@ -14,6 +14,7 @@ layout(set = 0, binding = 1) uniform readonly Input {
 struct Surface {
     vec3 col;
     float reflectivity;
+    float refractivity;
 };
 
 struct Sphere {
@@ -46,16 +47,16 @@ struct Intersect {
 };
 
 // An intersect with a distance of 0. Used to represent a miss
-const Intersect miss = Intersect(0.0, vec3(0), Surface(vec3(0),0.0));
+const Intersect miss = Intersect(0.0, vec3(0), Surface(vec3(0),0.0,0.0));
 
 // Defining arrays that contain scene geometry
 const int num_lights = 2;
 Light lights [num_lights];
 
-const int num_spheres = 3;
+const int num_spheres = 5;
 Sphere spheres [num_spheres];
 
-const int num_planes = 1;
+const int num_planes = 2;
 Plane planes [num_planes];
 
 // Ray-Sphere intersection
@@ -67,9 +68,15 @@ Intersect intersect(const in Ray ray, const in Sphere s) {
         float x = sqrt(s.rad * s.rad - y * y);
         float t1 = t - x;
         float t2 = t + x;
-        float tc = min(t1, t2);
-        if (tc < 0.0) {
+        float tc;
+        if (t1 < 0.0 && t2 < 0.0) {
             return miss;
+        } else if (t1 < 0.0) {
+            tc = t2;
+        } else if (t2 < 0.0) {
+            tc = t1;
+        } else {
+            tc = min(t1, t2);
         }
         return Intersect(tc, (ray.origin + ray.direction*tc - s.pos)/s.rad, s.surface);
     } else {
@@ -175,7 +182,7 @@ vec3 radience(Ray ray) {
     const float GAMMA = 2.2;
 
 
-    const int recursive_depth = 4;
+    const int recursive_depth = 10;
 
     Intersect intersect;
     float prev_reflectivity = 1.0;
@@ -220,17 +227,38 @@ vec3 radience(Ray ray) {
             }
 
             color += brightness * vec3(1.0);
-            float reflectivity = intersect.surface.reflectivity;
-            if (reflectivity != 0.0) {
-                vec3 reflection = reflect(ray.direction, intersect.norm);
-                ray = Ray(hit_point + EPSILON * reflection, reflection);
-            } else {
+
+            if (intersect.surface.refractivity == 0.0) {
+                // reflection
+                float reflectivity = intersect.surface.reflectivity;
+                if (reflectivity != 0.0) {
+                    vec3 reflection = reflect(ray.direction, intersect.norm);
+                    ray = Ray(hit_point + EPSILON * reflection, reflection);
+                } else {
+                    color += shaded_color * prev_reflectivity;
+                    prev_reflectivity = reflectivity;
+                    break;
+                }
                 color += shaded_color * prev_reflectivity;
                 prev_reflectivity = reflectivity;
-                break;
+
+
+            } else {
+                // refraction
+                float refractivity = intersect.surface.refractivity;
+                if (refractivity != 0.0) {
+                    float i_dot_n = dot(ray.direction, intersect.norm);
+                    vec3 normal = intersect.norm;
+                    if (i_dot_n < 0.0) {
+                        i_dot_n = -i_dot_n;
+                        refractivity = 1.0/refractivity;
+                    } else {
+                        normal = -normal;
+                    }
+                    vec3 direction = refract(ray.direction, normal, refractivity);
+                    ray = Ray(hit_point - EPSILON * normal, direction);
+                }
             }
-            color += shaded_color * prev_reflectivity;
-            prev_reflectivity = reflectivity;
         } else {
             color += brightness * vec3(1.0);
             break;
@@ -245,12 +273,14 @@ vec3 radience(Ray ray) {
 void main() {
     // Initialising the scene
     lights[0] = Light(vec3(-1.0, 0.8*sin(time), -2.0), 20.0, vec3(0.0));
-    lights[1] = Light(vec3(0.2*cos(time)+1.0, 0.8*sin(time)+1.0, -3.0), 10.0, vec3(0.0));
-    //lights[1] = Light(vec3(0.0), 0.5, vec3(0.0,-1.0,0.0));
-    spheres[0] = Sphere(vec3(0.0,0.0,-4.0),1.0,Surface(vec3(1.0),0.7));
-    spheres[1] = Sphere(vec3(0.5*cos(time),0.5*sin(time*3.14159)+0.1,-2.0),0.2,Surface(vec3(1.0,0.0,0.0), 0.0));
-    spheres[2] = Sphere(vec3(2.0,-0.5,-4.0),0.5,Surface(vec3(0.2,0.7,0.0),0.0));
-    planes[0] = Plane(vec3(0.0,-1.0,0.0),vec3(0.0,-1.0,0.0),Surface(vec3(1.0),0.5));
+    lights[1] = Light(vec3(0.2*cos(time)+0.2, 0.8*sin(time)+1.0, -5.5), 10.0, vec3(0.0));
+    //lights[2] = Light(vec3(0.0), 0.5, vec3(0.0,-1.0,0.0));
+    spheres[0] = Sphere(vec3(0.0,0.0,-4.0),1.0,Surface(vec3(0.0),0.0,1.2));
+    spheres[1] = Sphere(vec3(0.5*cos(time),0.5*sin(time*3.14159)+0.1,-2.0),0.2,Surface(vec3(1.0),0.0,0.0));
+    spheres[2] = Sphere(vec3(2.0,-0.5,-4.0),0.5,Surface(vec3(0.2,0.7,0.0),0.8,0.0));
+    spheres[3] = Sphere(vec3(-0.1,0.5*sin(time),-6.5),0.3,Surface(vec3(0.1,0.1,1.0),0.1,0.0));
+    spheres[4] = Sphere(vec3(-1.0,-0.8,-2.5),0.2,Surface(vec3(1.0,0.0,0.0),0.3,0.0));
+    planes[0] = Plane(vec3(0.0,-1.0,0.0),vec3(0.0,-1.0,0.0),Surface(vec3(1.0),0.5,0.0));
 
     // Create and trace the ray
     Ray ray = createPrimeRay();
