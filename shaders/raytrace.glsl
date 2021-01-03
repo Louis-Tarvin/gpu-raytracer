@@ -56,7 +56,7 @@ Light lights [num_lights];
 const int num_spheres = 5;
 Sphere spheres [num_spheres];
 
-const int num_planes = 2;
+const int num_planes = 1;
 Plane planes [num_planes];
 
 // Ray-Sphere intersection
@@ -275,11 +275,11 @@ void main() {
     lights[0] = Light(vec3(-1.0, 0.8*sin(time), -2.0), 20.0, vec3(0.0));
     lights[1] = Light(vec3(0.2*cos(time)+0.2, 0.8*sin(time)+1.0, -5.5), 10.0, vec3(0.0));
     //lights[2] = Light(vec3(0.0), 0.5, vec3(0.0,-1.0,0.0));
-    spheres[0] = Sphere(vec3(0.0,0.0,-4.0),1.0,Surface(vec3(0.0),0.0,1.2));
+    spheres[0] = Sphere(vec3(0.0,0.0,-4.0),1.0,Surface(vec3(1.0),0.0,1.2));
     spheres[1] = Sphere(vec3(0.5*cos(time),0.5*sin(time*3.14159)+0.1,-2.0),0.2,Surface(vec3(1.0),0.0,0.0));
     spheres[2] = Sphere(vec3(2.0,-0.5,-4.0),0.5,Surface(vec3(0.2,0.7,0.0),0.8,0.0));
-    spheres[3] = Sphere(vec3(-0.1,0.5*sin(time),-6.5),0.3,Surface(vec3(0.1,0.1,1.0),0.1,0.0));
-    spheres[4] = Sphere(vec3(-1.0,-0.8,-2.5),0.2,Surface(vec3(1.0,0.0,0.0),0.3,0.0));
+    spheres[3] = Sphere(vec3(-0.5,0.5*sin(time),-6.7),1.3,Surface(vec3(0.1,0.1,1.0),0.1,0.0));
+    spheres[4] = Sphere(vec3(-1.1,-0.8,-2.5),0.2,Surface(vec3(1.0,0.0,0.0),0.3,0.0));
     planes[0] = Plane(vec3(0.0,-1.0,0.0),vec3(0.0,-1.0,0.0),Surface(vec3(1.0),0.5,0.0));
 
     // Create and trace the ray

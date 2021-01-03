@@ -1,6 +1,6 @@
 use image::{ImageBuffer, Rgba};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use vulkano::{
     buffer::{BufferUsage, CpuAccessibleBuffer},
     command_buffer::{AutoCommandBufferBuilder, CommandBuffer},
@@ -139,7 +139,18 @@ fn main() {
         Some(queue.family()),
     )
     .unwrap();
-    let now = Instant::now();
+
+    let now = if let Some(time) = matches.value_of("time") {
+        let offset: f32 = if let Ok(offset) = time.parse() {
+            offset
+        } else {
+            println!("Invalid Argument: {}", time);
+            return;
+        };
+        Instant::now() - Duration::from_secs_f32(offset)
+    } else {
+        Instant::now()
+    };
 
     let compute_pipeline = Arc::new(
         ComputePipeline::new(device.clone(), &shader.main_entry_point(), &())

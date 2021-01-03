@@ -6,6 +6,12 @@ args:
         takes_value: true
         value_name: "output-filename"
         help: Export as a PNG rather than opening a new window
+    - time:
+        short: t
+        long: time
+        takes_value: true
+        value_name: "time"
+        help: Set the time parameter of the shader to this value in seconds. Useful when you want to take a screen-shot at the specified time
     - width:
         short: w
         long: width
@@ -20,13 +26,14 @@ args:
         short: d
         long: device
         takes_value: true
-        help: Specify the index of the physical device for Vulkan to use.
+        help: Specify the index of the physical device for Vulkan to use
     - list-devices:
         short: l
         long: list-devices
         help: List the physical devices available to Vulkan and their corresponding index
         conflicts_with:
             - frame
+            - time
             - width
             - height
             - device
