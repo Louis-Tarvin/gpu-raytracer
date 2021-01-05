@@ -131,7 +131,7 @@ Ray createPrimeRay() {
         - camera_right*view_plane_half_width;
     vec3 x_inc = (camera_right*2.0*view_plane_half_width)/width;
     vec3 y_inc = (camera_up*2.0*view_plane_half_height)/height;
-    
+
     vec3 ray_direction = normalize((view_plane_top_left + gl_GlobalInvocationID.x*x_inc - gl_GlobalInvocationID.y*y_inc));
     Ray ray = Ray(camera_position, ray_direction);
     return ray;
@@ -156,6 +156,36 @@ Intersect trace(const in Ray ray) {
         } else if (intersect.dist > 0.0 && intersect.dist < closest.dist) {
             closest = intersect;
         }
+    }
+    return closest;
+}
+
+// Trace a ray. Returns the intersect with the shortest distance.
+// Ignores transmissive materials, such as refractive spheres
+Intersect traceShadows(const in Ray ray) {
+    Intersect closest = miss;
+
+    for (int i = 0; i < num_spheres; i++) {
+        if (spheres[i].surface.refractivity == 0.0) {
+            Intersect intersect = intersect(ray, spheres[i]);
+            if (closest.dist == 0.0 && intersect.dist > 0.0) {
+                closest = intersect;
+            } else if (intersect.dist > 0.0 && intersect.dist < closest.dist) {
+                closest = intersect;
+            }
+        }
+
+    }
+    for (int i = 0; i < num_planes; i++) {
+        if (spheres[i].surface.refractivity == 0.0) {
+            Intersect intersect = intersect(ray, planes[i]);
+            if (closest.dist == 0.0 && intersect.dist > 0.0) {
+                closest = intersect;
+            } else if (intersect.dist > 0.0 && intersect.dist < closest.dist) {
+                closest = intersect;
+            }
+        }
+
     }
     return closest;
 }
@@ -196,39 +226,40 @@ vec3 radience(Ray ray) {
         if (intersect != miss) {
             vec3 hit_point = ray.origin + ray.direction * intersect.dist;
 
-            // fresnel
-            vec3 r0 = intersect.surface.col.rgb * intersect.surface.reflectivity;
-            float hv = clamp(dot(intersect.norm, -ray.direction), 0.0, 1.0);
-            fresnel = r0 + (1.0 - r0) * pow(1.0 - hv, 5.0);
-            mask *= fresnel;
+            if (intersect.surface.refractivity == 0.0) {
 
-            // diffuse shading
-            for (int j = 0; j < num_lights; j++) {
-                if (lights[j].direction == vec3(0.0)) {
-                    // spherical light
-                    vec3 direction_to_light = lights[j].pos - hit_point;
-                    vec3 direction_to_light_norm = normalize(direction_to_light);
-                    Intersect shadow_intersect = trace(Ray(hit_point + EPSILON * direction_to_light_norm, direction_to_light_norm));
-                    if (shadow_intersect == miss || shadow_intersect.dist > length(hit_point - lights[i].pos)) {
-                        float r2 = pow(length(direction_to_light),2.0);
-                        float light_intensity = lights[j].brightness / (4.0 * 3.14159 * r2);
-                        float light_power = max(dot(intersect.norm, direction_to_light),0.0) * light_intensity;
-                        shaded_color += clamp(intersect.surface.col.rgb * light_power * (1.0 - intersect.surface.reflectivity),0.0,1.0) * (1.0 - fresnel) * mask / fresnel;
-                    }
-                } else {
-                    // directional light
-                    vec3 direction_to_light = normalize(-lights[j].direction);
-                    Intersect shadow_intersect = trace(Ray(hit_point + EPSILON * direction_to_light, direction_to_light));
-                    if (shadow_intersect == miss || shadow_intersect.dist > length(hit_point - lights[j].pos)) {
-                        float light_power = max(dot(intersect.norm, direction_to_light),0.0) * lights[j].brightness;
-                        shaded_color += clamp(intersect.surface.col * light_power * (1.0 - intersect.surface.reflectivity),0.0,1.0);
+                // fresnel
+                vec3 r0 = intersect.surface.col.rgb * intersect.surface.reflectivity;
+                float hv = clamp(dot(intersect.norm, -ray.direction), 0.0, 1.0);
+                fresnel = r0 + (1.0 - r0) * pow(1.0 - hv, 5.0);
+                mask *= fresnel;
+
+                // diffuse shading
+                for (int j = 0; j < num_lights; j++) {
+                    if (lights[j].direction == vec3(0.0)) {
+                        // spherical light
+                        vec3 direction_to_light = lights[j].pos - hit_point;
+                        vec3 direction_to_light_norm = normalize(direction_to_light);
+                        Intersect shadow_intersect = traceShadows(Ray(hit_point + EPSILON * direction_to_light_norm, direction_to_light_norm));
+                        if (shadow_intersect == miss || shadow_intersect.dist > length(hit_point - lights[i].pos)) {
+                            float r2 = pow(length(direction_to_light),2.0);
+                            float light_intensity = lights[j].brightness / (4.0 * 3.14159 * r2);
+                            float light_power = max(dot(intersect.norm, direction_to_light),0.0) * light_intensity;
+                            shaded_color += clamp(intersect.surface.col.rgb * light_power * (1.0 - intersect.surface.reflectivity),0.0,1.0) * (1.0 - fresnel) * mask / fresnel;
+                        }
+                    } else {
+                        // directional light
+                        vec3 direction_to_light = normalize(-lights[j].direction);
+                        Intersect shadow_intersect = traceShadows(Ray(hit_point + EPSILON * direction_to_light, direction_to_light));
+                        if (shadow_intersect == miss || shadow_intersect.dist > length(hit_point - lights[j].pos)) {
+                            float light_power = max(dot(intersect.norm, direction_to_light),0.0) * lights[j].brightness;
+                            shaded_color += clamp(intersect.surface.col * light_power * (1.0 - intersect.surface.reflectivity),0.0,1.0);
+                        }
                     }
                 }
-            }
 
-            color += brightness * vec3(1.0);
+                color += brightness * vec3(1.0);
 
-            if (intersect.surface.refractivity == 0.0) {
                 // reflection
                 float reflectivity = intersect.surface.reflectivity;
                 if (reflectivity != 0.0) {
@@ -275,10 +306,10 @@ void main() {
     lights[0] = Light(vec3(-1.0, 0.8*sin(time), -2.0), 20.0, vec3(0.0));
     lights[1] = Light(vec3(0.2*cos(time)+0.2, 0.8*sin(time)+1.0, -5.5), 10.0, vec3(0.0));
     //lights[2] = Light(vec3(0.0), 0.5, vec3(0.0,-1.0,0.0));
-    spheres[0] = Sphere(vec3(0.0,0.0,-4.0),1.0,Surface(vec3(1.0),0.0,1.2));
-    spheres[1] = Sphere(vec3(0.5*cos(time),0.5*sin(time*3.14159)+0.1,-2.0),0.2,Surface(vec3(1.0),0.0,0.0));
+    spheres[0] = Sphere(vec3(0.0,0.0,-4.0),1.0,Surface(vec3(1.0),1.0,1.15));
+    spheres[1] = Sphere(vec3(0.3*cos(time)+0.1,-0.8,-2.0),0.2,Surface(vec3(0.7,0.3,1.0),0.0,0.0));
     spheres[2] = Sphere(vec3(2.0,-0.5,-4.0),0.5,Surface(vec3(0.2,0.7,0.0),0.8,0.0));
-    spheres[3] = Sphere(vec3(-0.5,0.5*sin(time),-6.7),1.3,Surface(vec3(0.1,0.1,1.0),0.1,0.0));
+    spheres[3] = Sphere(vec3(0.5*sin(-time)-0.8,0.2*sin(time),-6.7),0.8,Surface(vec3(0.1,0.1,1.0),0.1,0.0));
     spheres[4] = Sphere(vec3(-1.1,-0.8,-2.5),0.2,Surface(vec3(1.0,0.0,0.0),0.3,0.0));
     planes[0] = Plane(vec3(0.0,-1.0,0.0),vec3(0.0,-1.0,0.0),Surface(vec3(1.0),0.5,0.0));
 
