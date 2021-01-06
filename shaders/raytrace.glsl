@@ -3,6 +3,7 @@
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 
 layout(set = 0, binding = 0, rgba8) uniform writeonly image2D img;
+
 layout(set = 0, binding = 1) uniform readonly Input {
     int width;
     int height;
@@ -50,7 +51,7 @@ struct Intersect {
 const Intersect miss = Intersect(0.0, vec3(0), Surface(vec3(0),0.0,0.0));
 
 // Defining arrays that contain scene geometry
-const int num_lights = 2;
+const int num_lights = 3;
 Light lights [num_lights];
 
 const int num_spheres = 5;
@@ -210,8 +211,6 @@ vec3 radience(Ray ray) {
     vec3 color = vec3(0.0);
     const float EPSILON = 1e-3;
     const float GAMMA = 2.2;
-
-
     const int recursive_depth = 10;
 
     Intersect intersect;
@@ -273,7 +272,6 @@ vec3 radience(Ray ray) {
                 color += shaded_color * prev_reflectivity;
                 prev_reflectivity = reflectivity;
 
-
             } else {
                 // refraction
                 float refractivity = intersect.surface.refractivity;
@@ -288,6 +286,7 @@ vec3 radience(Ray ray) {
                     }
                     vec3 direction = refract(ray.direction, normal, refractivity);
                     ray = Ray(hit_point - EPSILON * normal, direction);
+                    color += vec3(1.0) * brightness;
                 }
             }
         } else {
@@ -303,9 +302,9 @@ vec3 radience(Ray ray) {
 
 void main() {
     // Initialising the scene
-    lights[0] = Light(vec3(-1.0, 0.8*sin(time), -2.0), 20.0, vec3(0.0));
+    lights[0] = Light(vec3(-1.0, 0.8*cos(-time), -2.0), 20.0, vec3(0.0));
     lights[1] = Light(vec3(0.2*cos(time)+0.2, 0.8*sin(time)+1.0, -5.5), 10.0, vec3(0.0));
-    //lights[2] = Light(vec3(0.0), 0.5, vec3(0.0,-1.0,0.0));
+    lights[2] = Light(vec3(0.0), 0.5, vec3(0.0,-1.0,0.0));
     spheres[0] = Sphere(vec3(0.0,0.0,-4.0),1.0,Surface(vec3(1.0),1.0,1.15));
     spheres[1] = Sphere(vec3(0.3*cos(time)+0.1,-0.8,-2.0),0.2,Surface(vec3(0.7,0.3,1.0),0.0,0.0));
     spheres[2] = Sphere(vec3(2.0,-0.5,-4.0),0.5,Surface(vec3(0.2,0.7,0.0),0.8,0.0));
