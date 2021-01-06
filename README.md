@@ -2,6 +2,10 @@
 
 A simple raytracer which runs on the GPU. Written in Rust using [Vulkano](https://vulkano.rs/). The GPU code is run as a compute shader using the Vulkan API.
 
+## Preview
+
+![preview-GIF](https://www.dropbox.com/s/tg4dwn4ffoj5cyb/raytracer-demo.gif?raw=1)
+
 ## Capabilities
 
 - Can render spheres and planes
@@ -9,9 +13,13 @@ A simple raytracer which runs on the GPU. Written in Rust using [Vulkano](https:
 - Reflective and refractive surfaces
 - Movable camera (controlled using arrow keys)
 
-## Running
+## Dependencies
 
-To run you must have both Rust and Vulkan installed.
+- Rust 
+- Vulkan
+- Vulkano has its own set of dependencies (see [here](https://github.com/vulkano-rs/vulkano#setup))
+
+## Running
 
 Often computers will have both an integrated GPU and a discrete GPU, the latter of which you are more likely to want to use.
 To prevent the program from defaulting to the wrong device, run `cargo run -- -l` to list available devices and their corresponding index.
